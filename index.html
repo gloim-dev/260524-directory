@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gloim Directory Dashboard</title>
+  <!-- 커스텀 스타일시트 연결 예정 -->
+  <link rel="stylesheet" href="style.css">
+  <!-- 폰트 및 아이콘 (Pretendard & Phosphor Icons 예시) -->
+  <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+</head>
+<body>
+
+  <!-- 배경 그라데이션 오라 효과를 위한 빈 디브 (CSS로 블러 처리 예정) -->
+  <div class="bg-glow-orb orb-1"></div>
+  <div class="bg-glow-orb orb-2"></div>
+
+  <div class="dashboard-wrapper">
+    
+    <!-- 1. 사이드바 (내비게이션 및 미니 위젯) -->
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="logo-text">GLOIM</span>
+        <span class="badge">DIR</span>
+      </div>
+      
+      <nav class="nav-menu">
+        <a href="#quick-access" class="nav-item active"><i class="ph ph-squares-four"></i> 대시보드</a>
+        <a href="#operation" class="nav-item"><i class="ph ph-briefcase"></i> 업무 & 관리</a>
+        <a href="#marketing" class="nav-item"><i class="ph ph-chart-bar"></i> 마케팅 & SEO</a>
+        <a href="#design-dev" class="nav-item"><i class="ph ph-paint-brush-broad"></i> 디자인 & 개발</a>
+      </nav>
+
+      <!-- 미니 메모 위젯 (로컬스토리지 연동용) -->
+      <div class="mini-widget memo-widget">
+        <h3><i class="ph ph-note-blank"></i> Quick Memo</h3>
+        <textarea id="quick-memo" placeholder="오늘의 할 일이나 일시적인 링크를 적어두세요..."></textarea>
+      </div>
+    </aside>
+
+    <!-- 2. 메인 콘텐츠 영역 -->
+    <main class="main-content">
+      
+      <!-- 상단 헤더 (검색 및 실시간 정보) -->
+      <header class="main-header">
+        <div class="search-bar-container">
+          <i class="ph ph-magnifying-glass search-icon"></i>
+          <input type="text" id="search-input" placeholder="필요한 서비스나 도구를 검색하세요...">
+        </div>
+        <div class="header-status">
+          <span id="live-clock">00:00:00</span>
+        </div>
+      </header>
+
+      <!-- 대시보드 스크롤 섹션 -->
+      <div class="scroll-container">
+        
+        <!-- 섹션: 퀵 액세스 (가장 자주 가는 곳) -->
+        <section id="quick-access" class="directory-section">
+          <h2 class="section-title">자주 찾는 서비스</h2>
+          <div class="quick-grid">
+            <!-- 퀵 카드 예시 -->
+            <a href="https://github.com" target="_blank" class="quick-card">
+              <div class="card-glow"></div> <!-- 마우스 추적용 글로우 레이어 -->
+              <div class="quick-icon"><i class="ph ph-github-logo"></i></div>
+              <div class="quick-info">
+                <h3>GitHub</h3>
+                <p>리포지토리 및 배포 관리</p>
+              </div>
+            </a>
+            <a href="#" target="_blank" class="quick-card">
+              <div class="card-glow"></div>
+              <div class="quick-icon"><i class="ph ph-google-logo"></i></div>
+              <div class="quick-info">
+                <h3>Workspace</h3>
+                <p>사내 메일 및 캘린더</p>
+              </div>
+            </a>
+          </div>
+        </section>
+
+        <!-- 섹션: 업무 및 관리 -->
+        <section id="operation" class="directory-section">
+          <h2 class="section-title">업무 & 사내 시스템</h2>
+          <div class="directory-grid">
+            <!-- 일반 링크 카드 예시 -->
+            <a href="#" target="_blank" class="link-card">
+              <div class="card-glow"></div>
+              <div class="card-header">
+                <i class="ph ph-file-text card-icon"></i>
+                <i class="ph ph-arrow-square-out-up-right link-arrow"></i>
+              </div>
+              <div class="card-body">
+                <h3>인트라넷 / 노션</h3>
+                <p>사내 공지사항 및 업무 매뉴얼 아카이빙 룸</p>
+              </div>
+              <div class="card-tags">
+                <span class="tag">Internal</span>
+                <span class="tag">Daily</span>
+              </div>
+            </a>
+          </div>
+        </section>
+
+        <!-- 섹션: 마케팅 & SEO -->
+        <section id="marketing" class="directory-section">
+          <h2 class="section-title">마케팅 & SEO 툴</h2>
+          <div class="directory-grid">
+            <a href="https://analytics.google.com" target="_blank" class="link-card">
+              <div class="card-glow"></div>
+              <div class="card-header">
+                <i class="ph ph-trend-up card-icon"></i>
+                <i class="ph ph-arrow-square-out-up-right link-arrow"></i>
+              </div>
+              <div class="card-body">
+                <h3>Google Analytics 4</h3>
+                <p>클라이언트 웹사이트 로그 분석 및 데이터 트래킹</p>
+              </div>
+              <div class="card-tags">
+                <span class="tag">Google</span>
+                <span class="tag">Analytics</span>
+              </div>
+            </a>
+            <a href="https://search.google.com/search-console" target="_blank" class="link-card">
+              <div class="card-glow"></div>
+              <div class="card-header">
+                <i class="ph ph-google-chrome-logo card-icon"></i>
+                <i class="ph ph-arrow-square-out-up-right link-arrow"></i>
+              </div>
+              <div class="card-body">
+                <h3>Search Console</h3>
+                <p>색인 생성 여부 확인 및 기술 SEO 퍼포먼스 모니터링</p>
+              </div>
+              <div class="card-tags">
+                <span class="tag">SEO</span>
+                <span class="tag">Console</span>
+              </div>
+            </a>
+          </div>
+        </section>
+
+        <!-- 섹션: 디자인 & 개발 -->
+        <section id="design-dev" class="directory-section">
+          <h2 class="section-title">디자인 & 개발 레퍼런스</h2>
+          <div class="directory-grid">
+            <a href="https://www.framer.com" target="_blank" class="link-card">
+              <div class="card-glow"></div>
+              <div class="card-header">
+                <i class="ph ph-framer-logo card-icon"></i>
+                <i class="ph ph-arrow-square-out-up-right link-arrow"></i>
+              </div>
+              <div class="card-body">
+                <h3>Framer</h3>
+                <p>인터랙티브 웹 디자인 프로토타이핑 및 프로덕션</p>
+              </div>
+              <div class="card-tags">
+                <span class="tag">Design</span>
+                <span class="tag">Interaction</span>
+              </div>
+            </a>
+          </div>
+        </section>
+
+      </div>
+    </main>
+
+  </div>
+
+  <!-- 메인 스크립트 연결 예정 -->
+  <script src="main.js"></script>
+</body>
+</html>
