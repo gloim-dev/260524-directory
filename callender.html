@@ -1,0 +1,1122 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gloim Enterprise OS - 개인 달력 스케줄러</title>
+  
+  <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+  <style>
+    /* ==========================================================================
+       1. 디자인 시스템 코어 변수 & 테마 엔진 (SaaS Elevation Spec)
+       ========================================================================== */
+    :root {
+      /* 다크 테마 (SaaS Dark Core - Google Premium Dark Mode 표준) */
+      --bg-color: #080b11;
+      --sidebar-bg: rgba(13, 18, 30, 0.75);
+      --card-bg: rgba(20, 27, 45, 0.45);
+      --card-border: rgba(255, 255, 255, 0.04);
+      --card-border-hover: rgba(59, 130, 246, 0.3);
+      --shadow-sm: rgba(0, 0, 0, 0);
+      
+      --text-main: #f3f4f6;
+      --text-muted: #8c93a3;
+      --accent-color: #3b82f6; 
+      --accent-glow: rgba(59, 130, 246, 0.15);
+      
+      --font-main: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      --font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+      
+      --input-bg: #070a12;
+      --modal-bg: #0f1422;
+      --memo-input-border: rgba(255, 255, 255, 0.05);
+      --transition-smooth: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+
+      /* 달력 가독성 전용 시스템 시그널 디자인 */
+      --cal-sunday: #f87171;
+      --cal-saturday: #60a5fa;
+      --cal-sunday-hover: rgba(248, 113, 113, 0.1);
+      --cal-saturday-hover: rgba(96, 165, 250, 0.1);
+    }
+
+    [data-theme="light"] {
+      /* 라이트 테마 (High-Contrast SaaS Light) */
+      --bg-color: #f8fafc;            
+      --sidebar-bg: #ffffff;          
+      --card-bg: #ffffff;             
+      --card-border: rgba(15, 23, 42, 0.06);
+      --card-border-hover: rgba(37, 99, 235, 0.4);
+      --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.03), 0 4px 12px rgba(15, 23, 42, 0.04);
+      
+      --text-main: #0f172a;           
+      --text-muted: #64748b;          
+      
+      --input-bg: #f1f5f9;
+      --modal-bg: #ffffff;
+      --memo-input-border: rgba(15, 23, 42, 0.08);
+
+      --cal-sunday: #dc2626;
+      --cal-saturday: #2563eb;
+      --cal-sunday-hover: rgba(220, 38, 38, 0.04);
+      --cal-saturday-hover: rgba(37, 99, 235, 0.04);
+    }
+
+    /* ==========================================================================
+       2. 글로벌 브라우저 정규화 & 베이스 커널
+       ========================================================================== */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: var(--font-main);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    html {
+      scroll-behavior: smooth;
+      text-size-adjust: 100%;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      overflow: hidden; 
+      position: relative;
+      min-height: 100vh;
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    a {
+      text-decoration: none;
+      color: inherit;
+    }
+
+    /* ==========================================================================
+       3. 레이아웃 & 내비게이션 프레임워크 (Glassmorphism 프레임)
+       ========================================================================== */
+    .dashboard-wrapper {
+      display: flex;
+      position: relative;
+      z-index: 1;
+      height: 100vh;
+      width: 100vw;
+    }
+
+    .sidebar {
+      width: 280px;
+      background: var(--sidebar-bg);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border-right: 1px solid var(--card-border);
+      padding: 32px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+      flex-shrink: 0;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding-left: 6px;
+    }
+    .logo-text {
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: 2px;
+      background: linear-gradient(135deg, var(--text-main) 0%, var(--text-muted) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .badge {
+      font-size: 10px;
+      background: rgba(59, 130, 246, 0.12);
+      color: var(--accent-color);
+      border: 1px solid rgba(59, 130, 246, 0.25);
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-weight: 700;
+    }
+
+    .nav-menu {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .split-nav-container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-radius: 8px;
+      transition: var(--transition-smooth);
+    }
+
+    .split-nav-container.active {
+      background: rgba(59, 130, 246, 0.08);
+      border: 1px solid rgba(59, 130, 246, 0.15);
+    }
+
+    .split-nav-left-link {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 11px 0 11px 14px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-muted);
+      cursor: pointer;
+      flex: 1;
+      transition: var(--transition-smooth);
+    }
+    .split-nav-left-link i { font-size: 18px; }
+
+    .split-nav-container:hover .split-nav-left-link,
+    .split-nav-container.active .split-nav-left-link {
+      color: var(--text-main);
+    }
+    .split-nav-container.active .split-nav-left-link {
+      color: var(--accent-color);
+      font-weight: 600;
+    }
+
+    .sidebar-accordion-trigger-box {
+      padding: 11px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: var(--text-muted);
+      transition: var(--transition-smooth);
+    }
+    .sidebar-accordion-trigger-box:hover {
+      color: var(--text-main);
+    }
+    .sidebar-chevron-icon {
+      font-size: 13px;
+      transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .sidebar-sub-panel-list {
+      list-style: none;
+      padding-left: 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      margin-top: 8px;   
+      margin-bottom: 8px;
+      overflow: hidden;
+      transition: max-height 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      max-height: 500px;
+    }
+    
+    .sub-panel-node-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-muted);
+      border-radius: 6px;
+      cursor: pointer;
+      transition: var(--transition-smooth);
+    }
+    .sub-panel-node-item i { font-size: 15px; }
+    .sub-panel-node-item:hover {
+      color: var(--text-main);
+      background: rgba(59, 130, 246, 0.05);
+    }
+
+    .split-nav-group.is-collapsed .sidebar-sub-panel-list {
+      max-height: 0px;
+    }
+    .split-nav-group.is-collapsed .sidebar-chevron-icon {
+      transform: rotate(-90deg);
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 11px 14px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: var(--transition-smooth);
+    }
+    .nav-item i { font-size: 18px; }
+    .nav-item:hover {
+      color: var(--text-main);
+      background: rgba(59, 130, 246, 0.05);
+    }
+    .nav-item.active {
+      background: rgba(59, 130, 246, 0.08);
+      border: 1px solid rgba(59, 130, 246, 0.15);
+      font-weight: 600;
+      color: var(--accent-color);
+    }
+
+    /* ==========================================================================
+       4. 실시간 퀵 메모 마이크로 위젯
+       ========================================================================== */
+    .mini-widget {
+      margin-top: auto;
+      background: rgba(255, 255, 255, 0.01);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    [data-theme="light"] .mini-widget { background: #f8fafc; }
+
+    .mini-widget h3 {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .memo-input-container {
+      display: flex;
+      flex-direction: column;
+      background: rgba(0, 0, 0, 0.15);
+      border: 1px solid var(--memo-input-border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      gap: 8px;
+      position: relative;
+      transition: border-color 0.2s ease;
+    }
+    [data-theme="light"] .memo-input-container { background: #ffffff; }
+    .memo-input-container:focus-within {
+      border-color: var(--accent-color);
+    }
+
+    .memo-input-container textarea {
+      width: 100%;
+      height: 64px;                 
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text-main);
+      font-size: 13.5px;              
+      line-height: 1.5;
+      resize: none;                 
+    }
+    .memo-input-container textarea::placeholder { color: var(--text-muted); }
+
+    .memo-control-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-top: 1px solid var(--card-border);
+      padding-top: 8px;
+    }
+    .memo-tip {
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+    .memo-add-btn {
+      background: transparent;
+      border: none;
+      color: var(--accent-color);
+      cursor: pointer;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      transition: transform 0.1s ease;
+    }
+    .memo-add-btn:active { transform: scale(0.9); }
+
+    .memo-list-wrapper {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 180px;
+      overflow-y: auto;
+      padding-right: 2px;
+    }
+    .memo-list-wrapper::-webkit-scrollbar { width: 4px; }
+    .memo-list-wrapper::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 2px; }
+
+    .memo-item {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+      box-shadow: var(--shadow-sm);
+      transition: var(--transition-smooth);
+    }
+    .memo-item:hover {
+      transform: translateY(-1px);
+    }
+    .memo-item.completed {
+      opacity: 0.45;
+    }
+    .memo-item.completed .memo-text-content {
+      text-decoration: line-through;
+      color: var(--text-muted);
+    }
+
+    .memo-left-block {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      width: 100%;
+    }
+
+    .memo-checkbox {
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 16px;
+      margin-top: 2px;
+      flex-shrink: 0;
+      transition: color 0.15s ease;
+    }
+    .memo-item.completed .memo-checkbox { color: #10b981; }
+
+    .memo-text-content {
+      font-size: 13.5px;              
+      color: var(--text-main);
+      line-height: 1.45;
+      word-break: break-all;
+      white-space: pre-wrap;        
+    }
+
+    .memo-action-btns {
+      display: flex;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    .memo-del-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 14px;
+      transition: color 0.15s ease;
+    }
+    .memo-del-btn:hover { color: #ef4444; }
+
+    /* ==========================================================================
+       5. 메인 스페이스 워크스페이스 & 탑 캘린더 헤더 바
+       ========================================================================== */
+    .main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    .main-header {
+      height: 72px;
+      padding: 0 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--card-border);
+      flex-shrink: 0;
+    }
+
+    .header-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-left: auto;
+    }
+
+    .btn-theme-toggle {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      display: inline-flex !important;      
+      align-items: center !important;        
+      justify-content: center !important;    
+      cursor: pointer;
+      padding: 0 !important;                 
+      font-size: 16px !important;            
+      transition: var(--transition-smooth);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .btn-theme-toggle i {
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+    }
+
+    .btn-theme-toggle:hover {
+      border-color: var(--accent-color);
+      transform: scale(1.05);
+      background: rgba(59, 130, 246, 0.05);
+    }
+
+    .info-clock-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--card-border);
+      padding: 5px 14px;
+      border-radius: 30px;
+      user-select: none;
+      height: 34px;               
+    }
+    [data-theme="light"] .info-clock-wrapper { background: rgba(15, 23, 42, 0.04); }
+
+    #live-date {
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text-main);
+      letter-spacing: -0.2px;
+    }
+    #live-clock {
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums; 
+      font-weight: 500;
+      color: var(--text-muted);
+      font-size: 12.5px;
+      border-left: 1px solid var(--card-border);
+      padding-left: 8px;
+    }
+
+    /* ==========================================================================
+       6. 프리미엄 대형 달력 컴포넌트 스펙
+       ========================================================================== */
+    .calendar-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .calendar-container::-webkit-viewport { width: 6px; }
+    .calendar-container::-webkit-scrollbar { width: 6px; }
+    .calendar-container::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 3px; }
+    [data-theme="dark"] .calendar-container::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); }
+
+    .calendar-inline-notebook {
+      background: rgba(59, 130, 246, 0.03);
+      border: 1px dashed rgba(59, 130, 246, 0.2);
+      border-radius: 12px;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    [data-theme="light"] .calendar-inline-notebook { background: #ffffff; border-style: solid; border-color: var(--card-border); box-shadow: var(--shadow-sm); }
+    .notebook-lbl { font-size: 12px; font-weight: 700; color: var(--accent-color); text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+    .notebook-input-node { flex: 1; background: transparent; border: none; outline: none; font-size: 13.5px; color: var(--text-main); font-weight: 500; }
+    .notebook-input-node::placeholder { color: var(--text-muted); opacity: 0.7; }
+
+    .calendar-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .calendar-navbar { display: flex; justify-content: space-between; align-items: center; }
+    .calendar-title-group { display: flex; align-items: center; gap: 12px; }
+    .calendar-title-group h2 { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; font-family: var(--font-mono); }
+    
+    .cal-nav-btn {
+      background: rgba(255, 255, 255, 0.02); border: 1px solid var(--card-border); color: var(--text-main);
+      width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: var(--transition-smooth);
+    }
+    .cal-nav-btn:hover { border-color: var(--accent-color); color: var(--accent-color); background: rgba(59, 130, 246, 0.05); }
+
+    .btn-add-event {
+      background: var(--accent-color); color: white; border: none; padding: 10px 18px;
+      border-radius: 8px; font-size: 13.5px; font-weight: 600; cursor: pointer;
+      display: flex; align-items: center; gap: 6px; transition: var(--transition-smooth);
+    }
+    .btn-add-event:hover { opacity: 0.95; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); }
+
+    .calendar-grid { display: flex; flex-direction: column; gap: 8px; }
+    
+    .calendar-weekdays {
+      display: grid; grid-template-columns: repeat(7, 1fr); text-align: center;
+      font-size: 13px; font-weight: 700; color: var(--text-muted); padding-bottom: 12px; border-bottom: 1px solid var(--card-border);
+    }
+    .calendar-weekdays div:first-child { color: var(--cal-sunday); }
+    .calendar-weekdays div:last-child { color: var(--cal-saturday); }
+
+    .calendar-cells-mesh { display: grid; grid-template-columns: repeat(7, 1fr); grid-auto-rows: minmax(115px, 1fr); gap: 8px; }
+    
+    .cal-cell {
+      background: rgba(255, 255, 255, 0.01); border: 1px solid var(--card-border);
+      border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 6px;
+      cursor: pointer; transition: var(--transition-smooth); position: relative;
+    }
+    [data-theme="light"] .cal-cell { background: rgba(15, 23, 42, 0.005); }
+    .cal-cell:hover { border-color: var(--card-border-hover); background: rgba(59, 130, 246, 0.02); }
+
+    .cal-cell.is-sunday .day-number { color: var(--cal-sunday); }
+    .cal-cell.is-saturday .day-number { color: var(--cal-saturday); }
+    .cal-cell.is-sunday:hover { background: var(--cal-sunday-hover); }
+    .cal-cell.is-saturday:hover { background: var(--cal-saturday-hover); }
+
+    /* 🇰🇷 공휴일 셀 전용 데코레이션 스타일 패키지 */
+    .cal-cell.is-holiday .day-number { color: var(--cal-sunday); font-weight: 700; }
+    .cal-cell.is-holiday { background: rgba(248, 113, 113, 0.02); }
+    .cal-cell.is-holiday:hover { background: var(--cal-sunday-hover); }
+
+    .cal-cell.today {
+      background: rgba(59, 130, 246, 0.06) !important;
+      border: 1.5px solid var(--accent-color) !important;
+      box-shadow: inset 0 0 12px rgba(59, 130, 246, 0.15);
+    }
+    .cal-cell.today .day-number { font-weight: 800; background: var(--accent-color); color: white !important; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; margin-top: -3px; }
+
+    .cal-cell.blank-day { opacity: 0.22; cursor: default; pointer-events: none; }
+    .day-number { font-size: 13px; font-weight: 600; color: var(--text-main); display: inline-flex; align-items: center; gap: 6px; }
+
+    /* 🏷️ 대한민국 공휴일 명칭 전용 마이크로 텍스트 배지 스펙 */
+    .holiday-label { font-size: 10px; font-weight: 500; color: var(--cal-sunday); background: rgba(248, 113, 113, 0.12); padding: 1px 4px; border-radius: 3px; display: inline-block; }
+
+    /* 🛠️ [요청 반영] 체크박스 + 삭제 아이콘이 내장된 프리미엄 일정 배지 아키텍처 */
+    .event-badge {
+      font-size: 11px; font-weight: 500; padding: 4px 6px; border-radius: 5px;
+      background: rgba(59, 130, 246, 0.1); color: #60a5fa;
+      border-left: 3px solid var(--accent-color);
+      display: flex; align-items: center; justify-content: space-between; gap: 6px;
+      margin-top: 2px; position: relative; transition: var(--transition-smooth);
+    }
+    [data-theme="light"] .event-badge { background: rgba(37, 99, 235, 0.06); color: #1e3a8a; font-weight: 600; }
+    
+    .event-badge.completed {
+      opacity: 0.4;
+      text-decoration: line-through;
+      background: rgba(255, 255, 255, 0.02);
+      color: var(--text-muted);
+      border-left-color: var(--text-muted);
+    }
+
+    .event-badge-left { display: flex; align-items: center; gap: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+    .event-badge i.badge-check-icon { font-size: 12px; cursor: pointer; color: var(--text-muted); transition: color 0.15s; }
+    .event-badge.completed i.badge-check-icon { color: #10b981; }
+    .event-title-span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .event-badge i.badge-del-icon { font-size: 11px; cursor: pointer; color: var(--text-muted); opacity: 0; transition: opacity 0.15s, color 0.15s; }
+    .event-badge:hover i.badge-del-icon { opacity: 1; }
+    .event-badge i.badge-del-icon:hover { color: #ef4444; }
+
+    /* 🛠️ [버그 픽스]: 모달 오픈 시 달력 배경 클릭 차단을 위한 고도화 z-index 설계 */
+    .modal-overlay { 
+      position: fixed; 
+      inset: 0; 
+      background: rgba(5, 7, 12, 0.4); 
+      backdrop-filter: blur(6px); 
+      -webkit-backdrop-filter: blur(6px); 
+      z-index: 99999 !important; /* 최상위 적층 구조로 격상시켜 달력 셀 클릭 무효화 */
+      display: none; 
+      align-items: center; 
+      justify-content: center; 
+    }
+    .modal-content-box { 
+      background: var(--modal-bg); 
+      border: 1px solid var(--card-border); 
+      width: 420px; 
+      border-radius: 16px; 
+      padding: 28px; 
+      display: flex; 
+      flex-direction: column; 
+      gap: 18px; 
+      box-shadow: 0 20px 40px rgba(0,0,0,0.4); 
+    }
+    .modal-input { width: 100%; padding: 12px; background: var(--input-bg); border: 1px solid var(--card-border); color: var(--text-main); border-radius: 8px; outline: none; font-size: 14px; transition: var(--transition-smooth); }
+    .modal-input:focus { border-color: var(--accent-color); }
+    .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 6px; }
+    .btn-modal { padding: 10px 18px; border-radius: 8px; font-size: 13.5px; font-weight: 600; cursor: pointer; border: none; }
+    .btn-modal.cancel { background: rgba(255, 255, 255, 0.04); color: var(--text-muted); }
+    .btn-modal.save { background: var(--accent-color); color: white; }
+    .btn-modal.danger { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.2); margin-right: auto; }
+    .btn-modal.danger:hover { background: #ef4444; color: white; }
+  </style>
+</head>
+<body data-theme="light"> <div class="dashboard-wrapper">
+    
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="logo-text">GLOIM</span>
+        <span class="badge">OS</span>
+      </div>
+      
+      <nav class="nav-menu">
+        <div class="split-nav-group" id="dash-accordion-group">
+          <div class="split-nav-container">
+            <div class="split-nav-left-link" onclick="location.href='index.html'">
+              <i class="ph ph-squares-four"></i>
+              <span>대시보드</span>
+            </div>
+            <div class="sidebar-accordion-trigger-box" onclick="event.stopPropagation(); toggleDashboardAccordion();">
+              <i class="ph ph-caret-down sidebar-chevron-icon"></i>
+            </div>
+          </div>
+          
+          <ul class="sidebar-sub-panel-list">
+            <li class="sub-panel-node-item" onclick="location.href='index.html#marketing'"><i class="ph ph-chart-bar"></i> 마케팅 & SEO</li>
+            <li class="sub-panel-node-item" onclick="location.href='index.html#design-dev'"><i class="ph ph-paint-brush-broad"></i> 디자인 & 개발</li>
+            <li class="sub-panel-node-item" onclick="location.href='index.html#operation'"><i class="ph ph-briefcase"></i> 업무 & 관리</li>
+          </ul>
+        </div>
+
+        <div onclick="location.href='calendar.html'" class="nav-item active" id="nav-calendar-link">
+          <i class="ph ph-calendar-blank"></i> 개인달력
+        </div>
+      </nav>
+
+      <div class="mini-widget memo-widget">
+        <h3><i class="ph ph-note-blank" style="color: var(--accent-color);"></i> 실시간 퀵 메모</h3>
+        <div class="memo-input-container">
+          <textarea id="memo-textarea-field" placeholder="새 메모를 자유롭게 입력하세요...&#10;(줄바꿈 Shift + Enter / 저장 Enter)"></textarea>
+          <div class="memo-control-bar">
+            <span class="memo-tip">Enter로 신속 등록</span>
+            <button class="memo-add-btn" onclick="pushLiveMemo()"><i class="ph ph-plus-bold"></i></button>
+          </div>
+        </div>
+        <div class="memo-list-wrapper" id="memo-render-target"></div>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="main-header">
+        <div style="font-weight: 700; font-size: 16px; letter-spacing: -0.3px;">일정 관리</div>
+        
+        <div class="header-controls">
+          <button class="btn-theme-toggle" id="theme-toggle-btn" onclick="toggleSystemTheme()" title="화면 테마 변경">
+            <i class="ph ph-moon"></i>
+          </button>
+          
+          <div class="info-clock-wrapper">
+            <span id="live-date">0월 00일(일)</span>
+            <span id="live-clock">00:00:00 AM</span>
+          </div>
+        </div>
+      </header>
+
+      <div class="calendar-container">
+        <div class="calendar-inline-notebook">
+          <span class="notebook-lbl"><i class="ph ph-lightning"></i> Today Notes</span>
+          <input type="text" id="inline-today-note-input" class="notebook-input-node" placeholder="오늘 반드시 완료해야 할 단 하나의 마일스톤을 여기에 기록하세요..." oninput="persistInlineNote(this.value)">
+        </div>
+
+        <div class="calendar-card">
+          <div class="calendar-navbar">
+            <div class="calendar-title-group">
+              <button class="cal-nav-btn" onclick="adjustMonth(-1)"><i class="ph ph-caret-left"></i></button>
+              <h2 id="calendar-year-month">2026.05</h2>
+              <button class="cal-nav-btn" onclick="adjustMonth(1)"><i class="ph ph-caret-right"></i></button>
+            </div>
+            <button class="btn-add-event" onclick="openModal()"><i class="ph ph-plus-bold"></i> 신규 일정 수립</button>
+          </div>
+
+          <div class="calendar-grid">
+            <div class="calendar-weekdays">
+              <div>일요일</div><div>월요일</div><div>화요일</div><div>수요일</div><div>목요일</div><div>금요일</div><div>토요일</div>
+            </div>
+            <div id="calendar-mesh-target" class="calendar-cells-mesh"></div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div class="modal-overlay" id="event-modal">
+    <div class="modal-content-box">
+      <h3 id="modal-header-title"><i class="ph ph-calendar-plus" style="color:var(--accent-color);"></i> 일정 스케줄러 등록</h3>
+      <input type="text" id="event-title" class="modal-input" placeholder="업무 보고 및 프로젝트 일정을 입력해 주세요">
+      <input type="date" id="event-date" class="modal-input">
+      <div class="modal-footer">
+        <button class="btn-modal danger" id="btn-modal-delete" style="display: none;" onclick="deleteSelectedEvent()">일정 취소</button>
+        <button class="btn-modal cancel" onclick="closeModal()">닫기</button>
+        <button class="btn-modal save" id="btn-modal-submit" onclick="saveEvent()">스케줄 반영</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let calendarDateObj = new Date();
+    let savedEvents = JSON.parse(localStorage.getItem('gloim_calendar_events')) || [
+      { id: 'ev-1', date: '2026-05-15', title: '팀 전체 정기 업무 보고', completed: false },
+      { id: 'ev-2', date: '2026-05-25', title: '신규 플랫폼 기능 테스트 배포', completed: true }
+    ];
+    let selectedActiveEventId = null;
+
+    function getKoreanHolidays(year) {
+      const holidays = {
+        "-01-01": "신정",
+        "-03-01": "삼일절",
+        "-05-05": "어린이날",
+        "-06-06": "현충일",
+        "-08-15": "광복절",
+        "-10-03": "개천절",
+        "-10-09": "한글날",
+        "-12-25": "성탄절"
+      };
+      
+      const lunarHolidaysByYear = {
+        2025: { "-01-28": "설날 연휴", "-01-29": "설날", "-01-30": "설날 연휴", "-05-05": "석가탄신일", "-10-05": "추석 연휴", "-10-06": "추석", "-10-07": "추석 연휴" },
+        2026: { "-02-16": "설날 연휴", "-02-17": "설날", "-02-18": "설날 연휴", "-05-24": "석가탄신일", "-09-24": "추석 연휴", "-09-25": "추석", "-09-26": "추석 연휴" },
+        2027: { "-02-06": "설날 연휴", "-02-07": "설날", "-02-08": "설날 연휴", "-05-13": "석가탄신일", "-09-14": "추석 연휴", "-09-15": "추석", "-09-16": "추석 연휴" }
+      };
+
+      const baseHolidays = {};
+      for (let key in holidays) {
+        baseHolidays[year + key] = holidays[key];
+      }
+      
+      if (lunarHolidaysByYear[year]) {
+        for (let key in lunarHolidaysByYear[year]) {
+          baseHolidays[year + key] = lunarHolidaysByYear[year][key];
+        }
+      }
+      return baseHolidays;
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      runSystemClock();
+      setInterval(runSystemClock, 1000);
+      renderLiveMemos();
+      renderCalendarCore();
+      
+      const savedNote = localStorage.getItem('gloim_calendar_inline_note') || '';
+      document.getElementById('inline-today-note-input').value = savedNote;
+      
+      // 화이트(라이트) 모드를 선행 디폴트 값으로 매핑 보정
+      const currentTheme = localStorage.getItem('gloim_theme') || 'light';
+      document.body.setAttribute('data-theme', currentTheme);
+      const themeBtn = document.getElementById('theme-toggle-btn');
+      themeBtn.innerHTML = currentTheme === 'dark' ? `<i class="ph ph-sun"></i>` : `<i class="ph ph-moon"></i>`;
+
+      document.getElementById('memo-textarea-field').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          pushLiveMemo();
+        }
+      });
+    });
+
+    function persistInlineNote(val) {
+      localStorage.setItem('gloim_calendar_inline_note', val);
+    }
+
+    function toggleDashboardAccordion() {
+      const groupNode = document.getElementById('dash-accordion-group');
+      groupNode.classList.toggle('is-collapsed');
+    }
+
+    function renderCalendarCore() {
+      const year = calendarDateObj.getFullYear();
+      const month = calendarDateObj.getMonth();
+      const holidayStore = getKoreanHolidays(year);
+      
+      document.getElementById('calendar-year-month').innerText = `${year}.${String(month + 1).padStart(2, '0')}`;
+      const meshTarget = document.getElementById('calendar-mesh-target');
+      meshTarget.innerHTML = '';
+
+      const firstDay = new Date(year, month, 1).getDay();
+      const lastDate = new Date(year, month + 1, 0).getDate();
+      const prevLastDate = new Date(year, month, 0).getDate();
+
+      for(let i = firstDay; i > 0; i--) {
+        const cell = document.createElement('div');
+        cell.className = 'cal-cell blank-day';
+        cell.innerHTML = `<span class="day-number">${prevLastDate - i + 1}</span>`;
+        meshTarget.appendChild(cell);
+      }
+
+      const today = new Date();
+      for(let d = 1; d <= lastDate; d++) {
+        const cell = document.createElement('div');
+        cell.className = 'cal-cell';
+        
+        const checkDateObj = new Date(year, month, d);
+        const dayOfWeek = checkDateObj.getDay(); 
+        if (dayOfWeek === 0) cell.classList.add('is-sunday');
+        if (dayOfWeek === 6) cell.classList.add('is-saturday');
+
+        const currentMappedDateStr = `${year}-${String(month+1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        
+        if (holidayStore[currentMappedDateStr]) {
+          cell.classList.add('is-holiday');
+        }
+
+        if(year === today.getFullYear() && month === today.getMonth() && d === today.getDate()) {
+          cell.classList.add('today');
+        }
+        
+        let dayNumberHtml = `<span class="day-number">${d}`;
+        if (holidayStore[currentMappedDateStr]) {
+          dayNumberHtml += ` <span class="holiday-label">${holidayStore[currentMappedDateStr]}</span>`;
+        }
+        dayNumberHtml += `</span>`;
+        cell.innerHTML = dayNumberHtml;
+
+        cell.onclick = (e) => {
+          if (e.target.closest('.event-badge')) return;
+          openModal(currentMappedDateStr);
+        };
+
+        const dayEvents = savedEvents.filter(ev => ev.date === currentMappedDateStr);
+        dayEvents.forEach(ev => {
+          const badge = document.createElement('div');
+          badge.className = `event-badge ${ev.completed ? 'completed' : ''}`;
+          
+          const checkIconClass = ev.completed ? 'ph-check-square-fill' : 'ph-square';
+          
+          badge.innerHTML = `
+            <div class="event-badge-left">
+              <i class="ph ${checkIconClass} badge-check-icon" title="완료 여부 변경"></i>
+              <span class="event-title-span">${ev.title}</span>
+            </div>
+            <i class="ph ph-trash badge-del-icon" title="일정 삭제"></i>
+          `;
+          
+          badge.querySelector('.badge-check-icon').onclick = (e) => {
+            e.stopPropagation();
+            toggleEventComplete(ev.id);
+          };
+
+          badge.querySelector('.badge-del-icon').onclick = (e) => {
+            e.stopPropagation();
+            removeDirectEvent(ev.id);
+          };
+
+          badge.onclick = (e) => {
+            e.stopPropagation();
+            openDetailModal(ev);
+          };
+
+          cell.appendChild(badge);
+        });
+
+        meshTarget.appendChild(cell);
+      }
+    }
+
+    function adjustMonth(dir) {
+      calendarDateObj.setMonth(calendarDateObj.getMonth() + dir);
+      renderCalendarCore();
+    }
+
+    function openModal(presetDate = null) {
+      selectedActiveEventId = null;
+      document.getElementById('modal-header-title').innerHTML = `<i class="ph ph-calendar-plus" style="color:var(--accent-color);"></i> 일정 스케줄러 등록`;
+      document.getElementById('btn-modal-delete').style.display = 'none';
+      document.getElementById('btn-modal-submit').innerText = '스케줄 반영';
+      
+      if(presetDate) {
+        document.getElementById('event-date').value = presetDate;
+      } else {
+        document.getElementById('event-date').value = new Date().toISOString().split('T')[0];
+      }
+      document.getElementById('event-title').value = '';
+      document.getElementById('event-modal').style.display = 'flex';
+      setTimeout(() => document.getElementById('event-title').focus(), 50);
+    }
+
+    function openDetailModal(eventObj) {
+      selectedActiveEventId = eventObj.id;
+      document.getElementById('modal-header-title').innerHTML = `<i class="ph ph-info" style="color:var(--accent-color);"></i> 일정 상세 조회 / 수정`;
+      document.getElementById('event-title').value = eventObj.title;
+      document.getElementById('event-date').value = eventObj.date;
+      
+      document.getElementById('btn-modal-delete').style.display = 'inline-block';
+      document.getElementById('btn-modal-submit').innerText = '정보 수정';
+      document.getElementById('event-modal').style.display = 'flex';
+    }
+    
+    function closeModal() { document.getElementById('event-modal').style.display = 'none'; }
+    
+    function saveEvent() {
+      const title = document.getElementById('event-title').value.trim();
+      const date = document.getElementById('event-date').value;
+      if(!title) return alert('일정 타이틀을 정확히 기술해주세요.');
+      
+      if (selectedActiveEventId) {
+        savedEvents = savedEvents.map(ev => {
+          if (ev.id === selectedActiveEventId) {
+            return { ...ev, title: title, date: date };
+          }
+          return ev;
+        });
+      } else {
+        savedEvents.push({ id: 'ev-' + Date.now(), date, title, completed: false });
+      }
+      
+      localStorage.setItem('gloim_calendar_events', JSON.stringify(savedEvents));
+      closeModal();
+      renderCalendarCore();
+    }
+
+    function toggleEventComplete(id) {
+      savedEvents = savedEvents.map(ev => {
+        if(ev.id === id) return { ...ev, completed: !ev.completed };
+        return ev;
+      });
+      localStorage.setItem('gloim_calendar_events', JSON.stringify(savedEvents));
+      renderCalendarCore();
+    }
+
+    function removeDirectEvent(id) {
+      savedEvents = savedEvents.filter(ev => ev.id !== id);
+      localStorage.setItem('gloim_calendar_events', JSON.stringify(savedEvents));
+      renderCalendarCore();
+    }
+
+    function deleteSelectedEvent() {
+      if (!selectedActiveEventId) return;
+      removeDirectEvent(selectedActiveEventId);
+      closeModal();
+    }
+
+    function runSystemClock() {
+      const dateTarget = document.getElementById('live-date');
+      const clockTarget = document.getElementById('live-clock');
+      if(!dateTarget || !clockTarget) return;
+      
+      const d = new Date();
+      const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+      dateTarget.innerText = `${d.getMonth() + 1}월 ${d.getDate()}일(${dayNames[d.getDay()]})`;
+
+      let hr = d.getHours();
+      const min = String(d.getMinutes()).padStart(2, '0');
+      const sec = String(d.getSeconds()).padStart(2, '0');
+      const ampm = hr >= 12 ? 'PM' : 'AM';
+      hr = hr % 12 || 12;
+      clockTarget.innerText = `${String(hr).padStart(2, '0')}:${min}:${sec} ${ampm}`;
+    }
+
+    function toggleSystemTheme() {
+      const bodyNode = document.body;
+      const themeBtn = document.getElementById('theme-toggle-btn');
+      const currentTheme = bodyNode.getAttribute('data-theme') || 'light';
+
+      themeBtn.innerHTML = ''; 
+      const iconNode = document.createElement('i');
+
+      if (currentTheme === 'dark') {
+        bodyNode.setAttribute('data-theme', 'light');
+        localStorage.setItem('gloim_theme', 'light');
+        iconNode.className = 'ph ph-moon';
+      } else {
+        bodyNode.setAttribute('data-theme', 'dark');
+        localStorage.setItem('gloim_theme', 'dark');
+        iconNode.className = 'ph ph-sun';
+      }
+      
+      bodyNode.setAttribute('data-theme', localStorage.getItem('gloim_theme'));
+      themeBtn.appendChild(iconNode);
+
+      if (window.PhosphorIcons && typeof window.PhosphorIcons.render === 'function') {
+        window.PhosphorIcons.render();
+      }
+    }
+
+    let memoDataStore = JSON.parse(localStorage.getItem('gloim_dashboard_memos'));
+    if (!memoDataStore) {
+      memoDataStore = [
+        { id: 1, text: "오후 3시 마이그레이션 자동화 툴 설명회 세션 참석", completed: false },
+        { id: 2, text: "Elementor 단층 컨테이너 적용 가이드북 확인 필", completed: true }
+      ];
+    }
+
+    function saveMemosToStorage() {
+      localStorage.setItem('gloim_dashboard_memos', JSON.stringify(memoDataStore));
+    }
+
+    function renderLiveMemos() {
+      const targetContainer = document.getElementById('memo-render-target');
+      if(!targetContainer) return;
+      targetContainer.innerHTML = '';
+
+      if (memoDataStore.length === 0) {
+        targetContainer.innerHTML = `<div class="memo-text-content" style="text-align:center; color: var(--text-muted); padding:16px 0;">등록된 실시간 태스크가 없습니다.</div>`;
+        return;
+      }
+
+      memoDataStore.forEach(memo => {
+        const item = document.createElement('div');
+        item.className = `memo-item ${memo.completed ? 'completed' : ''}`;
+        const checkIcon = memo.completed ? 'ph-check-square-fill' : 'ph-square';
+
+        item.innerHTML = `
+          <div class="memo-left-block">
+            <i class="ph ${checkIcon} memo-checkbox"></i>
+            <div>
+              <p class="memo-text-content">${memo.text}</p>
+            </div>
+          </div>
+          <div class="memo-action-btns">
+            <button class="memo-del-btn" title="완전 삭제">
+              <i class="ph ph-trash"></i>
+            </button>
+          </div>
+        `;
+        
+        item.querySelector('.memo-checkbox').addEventListener('click', () => toggleMemoStatus(memo.id));
+        item.querySelector('.memo-del-btn').addEventListener('click', () => eraseLiveMemo(memo.id));
+
+        targetContainer.appendChild(item);
+      });
+    }
+
+    function pushLiveMemo() {
+      const textarea = document.getElementById('memo-textarea-field');
+      const textVal = textarea.value.trim();
+      if (!textVal) return;
+
+      const newMemoNode = { id: Date.now(), text: textVal, completed: false };
+      memoDataStore.unshift(newMemoNode);
+      textarea.value = '';
+      
+      saveMemosToStorage(); 
+      renderLiveMemos();
+    }
+
+    function toggleMemoStatus(id) {
+      memoDataStore = memoDataStore.map(memo => {
+        if (memo.id === id) return { ...memo, completed: !memo.completed };
+        return memo;
+      });
+      
+      saveMemosToStorage(); 
+      renderLiveMemos();
+    }
+
+    function eraseLiveMemo(id) {
+      memoDataStore = memoDataStore.filter(memo => memo.id !== id);
+      
+      saveMemosToStorage(); 
+      renderLiveMemos();
+    }
+  </script>
+</body>
+</html>
